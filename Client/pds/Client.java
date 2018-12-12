@@ -13,3 +13,14 @@ class Client {
     private BufferedReader in;
     private BufferedReader kin;
     private PrintWriter out;
+    
+    Client(String ServerName, int ServerPort) {
+        try {
+            this.socket = new Socket(InetAddress.getByName(ServerName), ServerPort);
+            this.out = new PrintWriter(new OutputStreamWriter(this.socket.getOutputStream()),true);
+            this.in = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
+            this.kin = new BufferedReader(new InputStreamReader(System.in));
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+    }
