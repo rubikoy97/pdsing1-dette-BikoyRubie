@@ -30,3 +30,20 @@ class Client {
 
                 if(kin.ready()) {
                     out.println(kin.readLine());
+                } else {
+                    if(in.ready()) {
+                        String messageReceived = in.readLine();
+                        if (messageReceived != null )System.out.println(messageReceived);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String args[]) {
+        Client client = new Client("localhost",9999);
+        client.startCommunicate();
+    }
+}
