@@ -24,3 +24,9 @@ class Client {
             e.printStackTrace();
         }
     }
+    public void startCommunicate() {
+        try {
+            while(!socket.isClosed()) {
+
+                if(kin.ready()) {
+                    out.println(kin.readLine());
