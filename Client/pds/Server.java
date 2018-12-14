@@ -7,12 +7,12 @@ import java.net.Socket;
 
 public class Server {
 
-    private ServerSocket socketserver; // the server
-    private BufferedReader in ; // to receive message from the client
-    private PrintWriter out ; // to send message to the client
-    private int ServerPort = 9999; // port used
+    private ServerSocket socketserver; // le server
+    private BufferedReader in ; // pour recevoir le message du clien
+    private PrintWriter out ; // pour envoyer le message au client
+    private int ServerPort = 9999; // port utilisé
 
-    private Socket client; // Socket of the client
+    private Socket client; // Socket du client
 
     private String messageReceived = "";
 
