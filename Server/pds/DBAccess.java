@@ -1,16 +1,27 @@
 package pds;
 
+import pds.pool.ConnectionPool;
+
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 
+
 class DBAccess {
 
-    private static final String url = "jdbc:mysql://localhost:3306/pds";
-    private static final String user = "root";
-    private static final String password = "bikoy";
+    private static ConnectionPool connectionPool;
+
+    // This method create the pool with a fixed size
+    static void initPool(int maxConnection) {
+        if (maxConnection > 0) connectionPool = new ConnectionPool(maxConnection);
+        else connectionPool = new ConnectionPool();
+    }
+
+    // This method close all the connection in the pool
+    static void closePool() {
+        connectionPool.closeAll();
+    }
 
     /**
      *
@@ -19,11 +30,9 @@ class DBAccess {
      */
     static void create(String requestToSaveInDB) {
         try {
-            // we load the driver that will allow us to connect to the database
-            Class.forName("com.mysql.cj.jdbc.Driver");
 
             // we get a connection from the database
-            Connection conn = DriverManager.getConnection(url, user, password);
+            Connection conn = connectionPool.getConnection();
 
             // we define the SQL query that will insert our variable in the database
             String sql = "INSERT INTO test (test) VALUES (?)";
@@ -41,7 +50,7 @@ class DBAccess {
             req.close();
 
             // we close the connection to the database
-            conn.close();
+            connectionPool.releaseConnection(conn);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -64,7 +73,7 @@ class DBAccess {
             Class.forName("com.mysql.cj.jdbc.Driver");
 
             // we get a connection from the database
-            Connection conn = DriverManager.getConnection(url, user, password);
+            Connection conn = connectionPool.getConnection();
 
             // we define the SQL query that will fetch all data from the database
             String sql = "SELECT * FROM test";
@@ -88,8 +97,10 @@ class DBAccess {
             // we close the statement
             req.close();
 
+            Thread.sleep(5000);
+
             // we close the connection to the database
-            conn.close();
+            connectionPool.releaseConnection(conn);
 
 
             // we return the list (will requested by the server)
@@ -100,5 +111,4 @@ class DBAccess {
             return null;
         }
     }
-
 }
