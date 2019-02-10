@@ -12,8 +12,8 @@ public class ConnectionPool implements IConnectionPool {
     // Array list that will contains the connections
     private static ArrayList<Connection> pool ;
 
-    private static final String url = "jdbc:mysql://localhost:3306/pds";
-    private static final String user = "root";
+    private static final String url = "jdbc:mysql://192.168.20.4:3306/pds";
+    private static final String user = "bikoy";
     private static final String password = "bikoy";
 
     // By default the pool will make available five connections
