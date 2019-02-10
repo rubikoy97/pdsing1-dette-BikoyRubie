@@ -84,7 +84,7 @@ public class Client {
      * Main method to create a client and connect it to the local server on port 9999
      */
     public static void main(String args[]) {
-        Client client = new Client("localhost",9999);
+        Client client = new Client("192.168.20.4",9999);
         client.startCommunicate();
     }
 }
