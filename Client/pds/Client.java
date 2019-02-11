@@ -63,12 +63,13 @@ public class Client {
                     // we send what have been typed to the server (convert from String to Json)
                     out.println(gson.toJson(kin.readLine()));
 
-                    // otherwise
+                // otherwise
                 } else {
                     // if the server have sent something
                     if(in.ready()) {
                         // we get what the server have sent (convert from Json to String)
-                        String messageReceived = gson.fromJson(in.readLine(),String.class);
+                        //String messageReceived = gson.fromJson(in.readLine(),String.class);
+                        String messageReceived = in.readLine(); // To show the raw JSON
 
                         // and if what he sent is not null then we print it
                         if (messageReceived != null )System.out.println(messageReceived);
@@ -83,7 +84,7 @@ public class Client {
     /**
      * Main method to create a client and connect it to the local server on port 9999
      */
-    public static void main(String args[]) {
+    public static void main(String[] args) {
         Client client = new Client("192.168.20.4",9999);
         client.startCommunicate();
     }
