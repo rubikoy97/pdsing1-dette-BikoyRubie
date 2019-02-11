@@ -1,159 +1,140 @@
 package pds;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
+import pds.pool.ConnectionPool;
 
-import java.io.*;
-import java.lang.reflect.Type;
-import java.net.ServerSocket;
-import java.net.Socket;
-
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
 
-public class Server {
+import static java.lang.Thread.sleep;
 
-    // The server itself
-    private ServerSocket socketserver;
 
-    // The response that will be send to the client
-    private String response = "";
+class DBAccess {
 
-    // The object to convert to Json and vice versa
-    private Gson gson ;
+    private static ConnectionPool connectionPool;
 
-    private static int maxSimulation;
+    // This method create the pool with a fixed size
+    static void initPool(int maxConnection) {
+        if (maxConnection > 0) connectionPool = new ConnectionPool(maxConnection);
+        else connectionPool = new ConnectionPool();
+    }
+
+    // This method close all the connection in the pool
+    static void closePool() {
+        connectionPool.closeAll();
+    }
 
     /**
      *
-     * This constructor create the server on the port 9999 (listen port) with a connection pool of size = maxConnection
+     * This method insert the request send by any client in the database.
      *
      */
-    private Server(int maxConnection, int maxSimulation) {
+    static void create(String requestToSaveInDB) {
         try {
 
-            int serverPort = 9999; // port used
-            socketserver = new ServerSocket(serverPort); // making the server listen on port 9999
-            GsonBuilder builder = new GsonBuilder();
-            gson = builder.setPrettyPrinting().create(); // creation of the json converter
+            // we get a connection from the database
+            Connection conn = connectionPool.getConnection();
 
-            if (maxSimulation > 0) Server.maxSimulation = maxSimulation; // We make sure that the argument passed is positive
-            else Server.maxSimulation = 6; // else we provide a default value of 6
+            // we define the SQL query that will insert our variable in the database
+            String sql = "INSERT INTO test (test) VALUES (?)";
 
-            DBAccess.initPool(maxConnection);
+            // we prepare the query that will be executed
+            PreparedStatement req = conn.prepareStatement(sql) ;
 
-        } catch (IOException e) {
+            // we bind our method parameter to the query
+            req.setString(1,requestToSaveInDB);
+
+            // we execute the query
+            req.executeUpdate();
+
+            // we close the statement
+            req.close();
+
+            // we close the connection to the database
+            connectionPool.releaseConnection(conn);
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
+
     /**
-     *  This method is used to accept and client and describe the communication protocol
-     *  that is used between the client and the server.
      *
-     *  Here, every request send by the client will be stored in the database.
-     *  And when the server receive 'list' as a request, he query he database to get all
-     *  the previous request made by any client (history), and then send it back to the
-     *  client connected.
+     * This method get all the requests history from teh database
+     *
      */
-    private void AcceptConnection(){
+    static ArrayList<String> list() {
+
+        // we create a list to store all rows from the database
+        ArrayList<String> list = new ArrayList<>();
+
         try {
+            // we load the driver that will allow us to connect to the database
+            Class.forName("com.mysql.cj.jdbc.Driver");
 
-            // we accept the client that want to connect to the server
-            Socket client = this.socketserver.accept();
+            // we get a connection from the database
+            Connection conn = connectionPool.getConnection();
+
+            // we define the SQL query that will fetch all data from the database
+            String sql = "SELECT * FROM test";
+
+            // we prepare the query that will be executed
+            PreparedStatement req = conn.prepareStatement(sql) ;
+
+            // we get the response from our query to the database in a set of result
+            ResultSet rs = req.executeQuery();
+
+            // we iterate over the set of result
+            while (rs.next()) {
+
+                // we each result from the database to a String
+                String s = rs.getString(1);
+
+                // we add this String to the list
+                list.add(s);
+            }
+
+            // we close the statement
+            req.close();
+
+            sleep(3000);
+
+            // we close the connection to the database
+            connectionPool.releaseConnection(conn);
 
 
-            // we create the object that will make possible to send the response to the client
-            PrintWriter out = new PrintWriter(new OutputStreamWriter(client.getOutputStream()), true);
+            // we return the list (will requested by the server)
+            return list;
 
-            // we create the object that will make possible to get the request from the client
-            BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
-
-                // while the client is not disconnected
-                while (!client.isClosed()) {
-
-                    // If he sent a request
-                    if (in.ready()) {
-
-                        // we get his request (convert from Json to String)
-                        String request = gson.fromJson(in.readLine(), String.class);
-
-                        // if he disconnected then we close the communication with him
-                        if(null == request) client.close();
-                        else {
-                            // we look at what he send to know what to do
-                            switch (request) {
-
-                                // if he send 'list' we query the database to get the history of all requests made to the server
-                                case "list":
-
-                                    // we store the database response in a list
-                                    ArrayList<String> resultFromDb = DBAccess.list();
-
-                                    // we make sure that this list is not null
-                                    assert resultFromDb != null;
-
-                                    // we iterate over the list to update our response
-                                    //for(String s : resultFromDb) response += s + " - ";
-                                    Type listType = new TypeToken<List<String>>() {}.getType();
-                                    response = gson.toJson(resultFromDb, listType);
-
-                                    break;
-
-                                case "sim":
-                                    DBAccess.simulateConnection(maxSimulation);
-                                    break;
-
-                                // By default we save every request made by any client in the database
-                                default: DBAccess.create(request);
-
-                            }
-                            // We send back the response to the client (convert from String to Json)
-                            out.println(response);
-
-                            response = "";
-
-                        }
-
-                    }
-
-                }
-        } catch (IOException e) {
-            System.err.println("<!> end of stream <!>");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
     }
 
     /**
-     * This method describe how the server will run.
-     * By default, he only wait from a client to connect, and then accept to communicate with him
+     * This method simulate a number of connections to the database using the connection pool
+     * We hold the connections for five seconds and then release them all
+     * @param n the number of connections that will be simulated
      */
-    void run() {
-        while(!socketserver.isClosed()) AcceptConnection();
-        DBAccess.closePool();
-    }
-
-    /**
-     * Main method that create a server and launch it
-     */
-    public static void main(String[] args) {
-        // Int that represent the max connection to initialize the pool
-        int maxConnection, maxSimulation;
-
+    static void simulateConnection(int n) {
         try {
-            // Get the number of maxConnection and number of simulated connection as argument passed to the program
-            maxConnection = Integer.parseInt(args[0]);
-            maxSimulation = Integer.parseInt(args[1]);
-        } catch (Exception ignored) {
-            // If no argument have been specified we initialize the maxConnection to 0 and the pool will be created with its default value (5 connections)
-            maxConnection = 0;
-            // If no second argument have been specified we initialize the maxSimulation to 6
-            maxSimulation = 6;
-        }
+            // We create the arrayList that will hold the connections
+            ArrayList<Connection> heldConnection = new ArrayList<>(n);
 
-        Server server = new Server(maxConnection, maxSimulation);
-        server.run();
+            // We get the connections from the pool
+            for (int i = 0; i < n; i++) heldConnection.add(connectionPool.getConnection());
+
+            // We hold them for five seconds
+            sleep(5000);
+
+            // Then we release them to the pool
+            for (Connection conn : heldConnection) connectionPool.releaseConnection(conn);
+
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }
