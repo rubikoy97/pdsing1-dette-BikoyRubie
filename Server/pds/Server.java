@@ -10,6 +10,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class Server {
@@ -23,18 +24,23 @@ public class Server {
     // The object to convert to Json and vice versa
     private Gson gson ;
 
+    private static int maxSimulation;
+
     /**
      *
      * This constructor create the server on the port 9999 (listen port) with a connection pool of size = maxConnection
      *
      */
-    private Server(int maxConnection) {
+    private Server(int maxConnection, int maxSimulation) {
         try {
 
             int serverPort = 9999; // port used
             socketserver = new ServerSocket(serverPort); // making the server listen on port 9999
             GsonBuilder builder = new GsonBuilder();
             gson = builder.setPrettyPrinting().create(); // creation of the json converter
+
+            if (maxSimulation > 0) Server.maxSimulation = maxSimulation; // We make sure that the argument passed is positive
+            else Server.maxSimulation = 6; // else we provide a default value of 6
 
             DBAccess.initPool(maxConnection);
 
@@ -97,6 +103,10 @@ public class Server {
 
                                     break;
 
+                                case "sim":
+                                    DBAccess.simulateConnection(maxSimulation);
+                                    break;
+
                                 // By default we save every request made by any client in the database
                                 default: DBAccess.create(request);
 
@@ -130,17 +140,20 @@ public class Server {
      */
     public static void main(String[] args) {
         // Int that represent the max connection to initialize the pool
-        int maxConnection ;
+        int maxConnection, maxSimulation;
+
         try {
-            // Get the number of maxConnection as argument passed to the program
+            // Get the number of maxConnection and number of simulated connection as argument passed to the program
             maxConnection = Integer.parseInt(args[0]);
+            maxSimulation = Integer.parseInt(args[1]);
         } catch (Exception ignored) {
             // If no argument have been specified we initialize the maxConnection to 0 and the pool will be created with its default value (5 connections)
             maxConnection = 0;
+            // If no second argument have been specified we initialize the maxSimulation to 6
+            maxSimulation = 6;
         }
 
-        Server server = new Server(maxConnection);
+        Server server = new Server(maxConnection, maxSimulation);
         server.run();
     }
-    
 }
