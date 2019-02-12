@@ -50,6 +50,8 @@ class DBAccess {
 
             // we close the statement
             req.close();
+            
+            sleep(3000);
 
             // we close the connection to the database
             connectionPool.releaseConnection(conn);
