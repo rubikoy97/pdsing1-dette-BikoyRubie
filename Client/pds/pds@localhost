@@ -1,0 +1,33 @@
+create table shop
+(
+  id   int         not null,
+  name varchar(30) null,
+  constraint shop_id_uindex
+  unique (id),
+  constraint shop_name_uindex
+  unique (name)
+);
+
+alter table shop
+  add primary key (id);
+
+create table shop_traffic
+(
+  id      int  not null,
+  shop_id int  not null,
+  traffic int  not null,
+  date    date not null,
+  constraint shop_traffic_id_uindex
+  unique (id),
+  constraint shop_traffic_shop_id_fk
+  foreign key (shop_id) references shop (id)
+    on update cascade on delete cascade
+);
+
+alter table shop_traffic
+  add primary key (id);
+
+create table test
+(
+  test varchar(255) null
+);
