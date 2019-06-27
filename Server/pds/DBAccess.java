@@ -1,139 +1,107 @@
-package pds.dbAccess;
-
-import pds.pool.ConnectionPool;
+package pds.pool;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.ArrayList;
 
 import static java.lang.Thread.sleep;
 
+public class ConnectionPool implements IConnectionPool {
 
-public class DBAccess {
+    // Array list that will contains the connections
+    private static ArrayList<Connection> pool ;
 
-     static ConnectionPool connectionPool;
+    private static final String url = "jdbc:postgresql://192.168.20.4:5432/pds";
+    private static final String user = "kan10";
+    private static final String password = "kan10pwd";
 
-    // This method create the pool with a fixed size
+    // By default the pool will make available five connections
+    private static final int defaultPoolSize = 5;
 
+    // Represent the maximum of connections that the pool offer
+    private int maxConnection;
 
-    // This method close all the connection in the pool
-    static void closePool() {
-        connectionPool.closeAll();
+    // Create a pool with the default size (5 connections)
+    public ConnectionPool() {
+        this(defaultPoolSize);
     }
 
-    /**
-     *
-     * This method insert the request send by any client in the database.
-     *
-     */
-    public static void create(String requestToSaveInDB) {
+    // Create the pool with a specified size represented by maxConnection
+    public ConnectionPool(int maxConnection) {
         try {
+            System.out.println(maxConnection);
+            // We create the pool
+            pool = new ArrayList<>(maxConnection);
 
-            // we get a connection from the database
-            Connection conn = connectionPool.getConnection();
+            // We load the jdbc driver
+            Class.forName("org.postgresql.Driver");
 
-            // we define the SQL query that will insert our variable in the database
-            String sql = "INSERT INTO test (test) VALUES (?)";
-
-            // we prepare the query that will be executed
-            PreparedStatement req = conn.prepareStatement(sql) ;
-
-            // we bind our method parameter to the query
-            req.setString(1,requestToSaveInDB);
-
-            // we execute the query
-            req.executeUpdate();
-
-            // we close the statement
-            req.close();
-
-            sleep(3000);
-
-            // we close the connection to the database
-            connectionPool.releaseConnection(conn);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-
-    /**
-     *
-     * This method get all the requests history from teh database
-     *
-     */
-    public static ArrayList<String> list() {
-
-        // we create a list to store all rows from the database
-        ArrayList<String> list = new ArrayList<>();
-
-        try {
-            // we load the driver that will allow us to connect to the database
-            Class.forName("com.mysql.cj.jdbc.Driver");
-
-            // we get a connection from the database
-            Connection conn = connectionPool.getConnection();
-
-            // we define the SQL query that will fetch all data from the database
-            String sql = "SELECT * FROM test";
-
-            // we prepare the query that will be executed
-            PreparedStatement req = conn.prepareStatement(sql) ;
-
-            // we get the response from our query to the database in a set of result
-            ResultSet rs = req.executeQuery();
-
-            // we iterate over the set of result
-            while (rs.next()) {
-
-                // we each result from the database to a String
-                String s = rs.getString(1);
-
-                // we add this String to the list
-                list.add(s);
+            // We fulfil the pool with connections
+            for (int i = 0; i < maxConnection; i++) {
+                pool.add(DriverManager.getConnection(url,user,password));
             }
 
-            // we close the statement
-            req.close();
+            pool.forEach(a -> System.out.println(a.toString()));
+            // We set the maxConnection value
+            this.maxConnection = maxConnection;
 
-            //sleep(3000);
+            // We launch the thread that will show the actives connections
+           monitoring();
 
-            // we close the connection to the database
-            connectionPool.releaseConnection(conn);
-
-
-            // we return the list (will requested by the server)
-            return list;
-
-        } catch (Exception e) {
+        } catch (ClassNotFoundException | SQLException e) {
             e.printStackTrace();
-            return null;
         }
     }
 
-    /**
-     * This method simulate a number of connections to the database using the connection pool
-     * We hold the connections for five seconds and then release them all
-     * @param n the number of connections that will be simulated
-     */
-    static void simulateConnection(int n) {
-        try {
-            // We create the arrayList that will hold the connections
-            ArrayList<Connection> heldConnection = new ArrayList<>(n);
+    // This method take a connection from the pool
+    @Override
+    public Connection getConnection() {
+        if (pool.size() > 0) return pool.remove(pool.size()-1);
+        System.err.println("<!> MAX CONNECTION REACHED <!>");
+        return null;
+    }
 
-            // We get the connections from the pool
-            for (int i = 0; i < n; i++) heldConnection.add(connectionPool.getConnection());
+    // This method release a connection to back to the pool
+    @Override
+    public void releaseConnection(Connection connection) {
+        if (pool.size() < maxConnection) pool.add(connection);
+    }
 
-            // We hold them for five seconds
-            sleep(5000);
-
-            // Then we release them to the pool
-            for (Connection conn : heldConnection) connectionPool.releaseConnection(conn);
-
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+    // This method close all the connection from the pool
+    @Override
+    public void closeAll() {
+        for (Connection connection : pool) {
+            try {
+                connection.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
+    }
+
+    // This method return the number of used connection
+    private int getActiveConnection() {
+        return maxConnection - pool.size();
+    }
+
+    // This method return the maximum of connection that the pool can offer
+    private int getMaxConnection() {
+        return maxConnection;
+    }
+    // This method show the number of connection in use
+    private void monitoring() {
+
+        new Thread(() -> {
+            while(true) {
+                try {
+                    System.out.println(String.format("%s active(s) connection(s) from %s !", getActiveConnection(), getMaxConnection()));
+                    sleep(2000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+
     }
 }
