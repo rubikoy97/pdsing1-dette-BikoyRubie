@@ -12,9 +12,9 @@ public class ConnectionPool implements IConnectionPool {
     // Array list that will contains the connections
     private static ArrayList<Connection> pool ;
 
-    private static final String url = "jdbc:mysql://localhost:3306/pds";
-    private static final String user = "root";
-    private static final String password = "bikoy";
+    private static final String url = "jdbc:postgresql://192.168.20.4:5432/pds";
+    private static final String user = "kan10";
+    private static final String password = "kan10pwd";
 
     // By default the pool will make available five connections
     private static final int defaultPoolSize = 5;
@@ -35,7 +35,7 @@ public class ConnectionPool implements IConnectionPool {
             pool = new ArrayList<>(maxConnection);
 
             // We load the jdbc driver
-            Class.forName("com.mysql.cj.jdbc.Driver");
+            Class.forName("org.postgresql.Driver");
 
             // We fulfil the pool with connections
             for (int i = 0; i < maxConnection; i++) {
@@ -47,7 +47,7 @@ public class ConnectionPool implements IConnectionPool {
             this.maxConnection = maxConnection;
 
             // We launch the thread that will show the actives connections
-           // monitoring();
+           monitoring();
 
         } catch (ClassNotFoundException | SQLException e) {
             e.printStackTrace();
